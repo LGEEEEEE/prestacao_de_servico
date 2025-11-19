@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrato Prestação de Serviços - POLLO (Fixo Bradesco 96x)</title>
+
+    <script>
+        if (localStorage.getItem('isAuthenticated') !== 'true') {
+             // alert("Acesso negado."); window.location.replace('index.html');
+        }
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@latest/dist/tesseract.min.js'></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; gap: 20px; padding: 20px; justify-content: center; flex-wrap: wrap; }
+        
+        /* --- FORMULÁRIO (Lado Esquerdo) --- */
+        #form-container { flex: 0 0 420px; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); height: fit-content; max-height: 95vh; overflow-y: auto; position: sticky; top: 20px; }
+        #form-container h1 { text-align: center; color: #0d47a1; margin-top: 0; font-size: 1.4rem; border-bottom: 2px solid #0d47a1; padding-bottom: 10px; }
+        .form-section { margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 15px; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; font-weight: 600; font-size: 0.85rem; color: #555; margin-bottom: 4px; }
+        .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; }
+        .form-group input:focus { border-color: #0d47a1; outline: none; }
+        
+        /* Estilo para campos Readonly parecerem "travados" visualmente */
+        .form-group input[readonly] { background-color: #e9ecef; color: #495057; cursor: not-allowed; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; align-items: end; }
+
+        #gerar-pdf { width: 100%; padding: 12px; background: #0d47a1; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: background 0.3s; }
+        #gerar-pdf:hover { background: #083275; }
+
+        .upload-area { border: 2px dashed #0d47a1; padding: 15px; text-align: center; cursor: pointer; background: #eef4ff; border-radius: 6px; color: #0d47a1; font-weight: bold; display: block; transition: background 0.2s; }
+        .upload-area:hover { background: #dce9ff; }
+        #pdf-upload { display: none; }
+
+        /* --- PREVIEW DO DOCUMENTO (Lado Direito) --- */
+        #preview-container { flex: 1; display: flex; justify-content: center; min-width: 500px; }
+        #documento-completo { 
+            width: 210mm; 
+            padding: 20mm 20mm; 
+            background: white; 
+            box-shadow: 0 0 15px rgba(0,0,0,0.1); 
+            font-family: 'Times New Roman', Times, serif; 
+            font-size: 11pt; 
+            line-height: 1.15; 
+            text-align: justify; 
+            color: black; 
+        }
+
+        #documento-completo h3 { text-align: center; text-transform: uppercase; font-size: 12pt; margin-bottom: 20px; font-weight: bold; }
+        .clausula-titulo { font-weight: bold; margin-top: 15px; margin-bottom: 5px; text-transform: uppercase; display: block; }
+        .paragrafo { margin-bottom: 10px; text-indent: 0; }
+        .paragrafo-recuo { text-indent: 1cm; }
+
+        .resumo-valores { margin: 15px 0; padding: 5px 0; font-weight: bold; }
+        .resumo-linha { display: block; margin-bottom: 3px; }
+
+        .assinaturas-container { margin-top: 40px; display: flex; flex-direction: column; align-items: center; gap: 30px; page-break-inside: avoid; }
+        .assinatura-linha { width: 70%; border-top: 1px solid #000; text-align: center; padding-top: 5px; margin-top: 30px; }
+
+        .variavel { background-color: #eef; padding: 0 2px; border-radius: 2px; font-weight: bold; color: #000; }
+        .generating-pdf .variavel { background-color: transparent; padding: 0; font-weight: inherit; }
+        .destaque-valor { font-weight: bold; }
+
+        /* --- MODAL, TOAST e LOADING --- */
+        #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 2000; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #0d47a1; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        #contract-modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1050; display: none; justify-content: center; align-items: center; }
+        #contract-modal { background: #fff; border-radius: 8px; width: 90%; max-width: 500px; max-height: 80vh; display: flex; flex-direction: column; }
+        #contract-modal-header { padding: 15px; border-bottom: 1px solid #eee; font-weight: bold; font-size: 1.1rem; }
+        #contract-modal-body { padding: 15px; overflow-y: auto; }
+        #contract-list .form-check { padding: 10px; border-bottom: 1px solid #f0f0f0; cursor: pointer; display: flex; gap: 10px; align-items: center; }
+        #contract-list .form-check:hover { background: #f9f9f9; }
+        #contract-modal-footer { padding: 15px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px; }
+        .modal-btn { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: #0d47a1; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 3000; }
+        .toast { padding: 15px; background: #333; color: white; margin-bottom: 10px; border-radius: 5px; display: none; width: 300px; }
+        .toast.show { display: block; animation: slideIn 0.3s; }
+        .toast.bg-success { background: #28a745; }
+        .toast.bg-danger { background: #dc3545; }
+        
+        @media print {
+            body { background: white; }
+            #form-container, #loading-overlay, #contract-modal-overlay, .toast-container { display: none; }
+            #preview-container { display: block; margin: 0; padding: 0; }
+            #documento-completo { box-shadow: none; width: 100%; margin: 0; padding: 0; }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="toast-container" id="toast-container"></div>
+    
+    <div id="loading-overlay">
+        <div class="spinner"></div>
+        <strong style="margin-top: 10px; color: #0d47a1;">Analisando Documento...</strong>
+    </div>
+
+    <div id="contract-modal-overlay">
+        <div id="contract-modal">
+            <div id="contract-modal-header">Selecione as Parcelas para Somar</div>
+            <div id="contract-modal-body">
+                <div id="infoClienteModal" style="background: #eef; padding: 10px; margin-bottom: 10px; font-size: 0.9rem; border-radius: 4px;"></div>
+                <p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">Selecione os contratos abaixo para somar o valor da parcela. O Banco e Prazo no contrato final permanecerão BRADESCO / 96x.</p>
+                <div id="contract-list"></div>
+            </div>
+            <div id="contract-modal-footer">
+                <button id="modal-cancel-btn" class="modal-btn btn-secondary">Cancelar</button>
+                <button id="modal-apply-btn" class="modal-btn btn-primary">Somar Selecionados</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="form-container">
+        <h1>Contrato POLLO</h1>
+        
+        <div class="form-section">
+            <input type="file" id="pdf-upload" accept=".pdf">
+            <label for="pdf-upload" class="upload-area">📂 Arraste o Contracheque/Extrato aqui</label>
+        </div>
+
+        <div class="form-section">
+            <h2>Dados do Contratante</h2>
+            <div class="form-group"><label>Nome:</label><input type="text" id="nome" placeholder="Nome Completo"></div>
+            <div class="form-group"><label>CPF:</label><input type="text" id="cpf" placeholder="000.000.000-00"></div>
+            <div class="form-group"><label>RG (Opcional):</label><input type="text" id="rg" placeholder="000000 SSP/DF"></div>
+            <div class="form-group"><label>CEP:</label><input type="text" id="cep" onblur="buscarCep()" placeholder="Digite o CEP para puxar o Endereço Completo"></div>
+            <div class="form-group"><label>Endereço:</label><input type="text" id="endereco" placeholder="Endereço completo"></div>
+        </div>
+
+        <div class="form-section">
+            <h2>Detalhes da Operação</h2>
+            <div class="form-group">
+                <label>Banco de Origem (Fixo):</label>
+                <input type="text" id="banco-origem" value="BRADESCO" readonly>
+            </div>
+            <div class="form-group">
+                <label>Valor da Parcela (R$):</label>
+                <input type="text" id="valor-parcela" class="campo-moeda">
+            </div>
+            <div class="form-group">
+                <label>Prazo (Fixo):</label>
+                <input type="text" id="prazo" value="96" readonly>
+            </div>
+            <hr>
+            <div class="form-group">
+                <label>Total Bruto Liberado (R$):</label>
+                <input type="text" id="valor-bruto" class="campo-moeda" placeholder="R$ 0,00">
+            </div>
+            
+            <div class="grid-2" style="background: #eef; padding: 8px; border-radius: 4px; margin-bottom: 10px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="color:#0d47a1">Taxa (%):</label>
+                    <input type="number" id="percentual-honorarios" value="30" min="0" max="100" style="font-weight: bold; color: #0d47a1;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="color:#0d47a1">Valor Honorários:</label>
+                    <input type="text" id="valor-consultoria" class="campo-moeda" readonly style="font-weight: bold; color: #0d47a1;">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Valor Líquido (Cliente):</label>
+                <input type="text" id="valor-liquido" class="campo-moeda">
+            </div>
+        </div>
+
+        <div class="form-section">
+            <div class="form-group"><label>Data do Contrato:</label><input type="text" id="data-contrato"></div>
+            <button id="gerar-pdf">Baixar Contrato (PDF)</button>
+        </div>
+    </div>
+
+    <div id="preview-container">
+        <div id="documento-completo">
+            <h3>INSTRUMENTO PARTICULAR DE CONTRATO DE PRESTAÇÃO DE SERVIÇOS</h3>
+            
+            <p class="paragrafo">
+                Pelo presente Instrumento Particular, as partes abaixo qualificadas, a saber, 
+                <strong>POLLO PROMOTORA</strong>, pessoa jurídica de direito privado, inscrita no CNPJ sob nº 44.906.703/0001-59, 
+                com sede: CSE 06 LOTE 30 SALAS 205/206, doravante denominada "<strong>CONTRATADA</strong>"; e de outro lado: 
+                <span id="doc-nome" class="variavel">[NOME DO CLIENTE]</span> brasileiro(a), inscrito no CPF/MF sob o nº 
+                <span id="doc-cpf" class="variavel">[CPF]</span>, portador do RG nº <span id="doc-rg" class="variavel">[RG]</span>, 
+                residente e domiciliado: <span id="doc-endereco" class="variavel">[ENDEREÇO]</span> 
+                doravante designada "<strong>CONTRATANTE</strong>".
+            </p>
+
+            <p class="clausula-titulo">Cláusula 1ª: Do Objeto:</p>
+            <p class="paragrafo">
+                A CONTRATADA, obriga-se a intermediar para a CONTRATANTE dentro das regras deste contrato e com os padrões de melhor qualidade, 
+                propostas de empréstimos mediante consignação em folha de pagamento, aposentados e pensionistas do INSS, Servidores Públicos Federais (SIAPE), 
+                Estaduais e Municipais e Militares das Forças Armadas, junto à Instituição Financeira devidamente regulamentada pelo Banco Central do Brasil (“BACEN”), 
+                bem como acompanhar a referida proposta até a efetiva aprovação da Instituição Financeira, incluindo os serviços complementares de coleta de informações 
+                cadastrais e documentação da CONTRATADA, para garantir o processamento da proposta.
+            </p>
+            <p class="paragrafo">
+                A Intermediadora, portanto dará toda consultoria para verificar as disponibilidades e opções de Bancos para a Contratante e apresentará a mesma os valores (taxas) disponíveis através de Bancos parceiros.
+            </p>
+
+            <p class="clausula-titulo">Cláusula 2ª – Dos valores liberados</p>
+            <p class="paragrafo">
+                Pela prestação de serviços objeto do presente contrato a CONTRATANTE pagará à CONTRATADA o total de 
+                <strong><span id="doc-percentual-texto">30</span>% (<span id="doc-percentual-extenso">trinta</span> por cento</strong> sobre o valor do crédito aprovado pela Instituição Financeira e depositado na conta corrente do CONTRATANTE) 
+                mediante transferência bancária junto a conta corrente de titularidade da CONTRATADA Banco: CAIXA ECONÔMICA FEDERAL (104) Agencia: 0643 conta corrente :596052731-2 
+                cujo pagamento deverá ser realizado na data da liberação do referido crédito pela Instituição Financeira à CONTRATANTE.
+            </p>
+
+            <div class="resumo-valores">
+                <span class="resumo-linha">Valores Brutos Liberados na Conta do Cliente:</span>
+                <span class="resumo-linha">
+                    PARCELA TOTAL AVERBADA PELO <span id="doc-banco-origem" class="variavel">BRADESCO</span> NO PRAZO DE <span id="doc-prazo" class="variavel">96</span>X: <span id="doc-parcela" class="variavel">R$ 0,00</span>
+                </span>
+                <span class="resumo-linha">Total bruto liberado: <span id="doc-bruto" class="variavel">R$ 0,00</span></span>
+                <span class="resumo-linha">Valor liquido da cliente: <span id="doc-liquido" class="variavel">R$ 0,00</span></span>
+                <span class="resumo-linha">Consultoria prestada encima de <span id="doc-percentual-tab">30</span>%: <span id="doc-consultoria" class="variavel">R$ 0,00</span></span>
+            </div>
+
+            <p class="paragrafo">
+                Parágrafo Primeiro: Ocorrendo atraso no pagamento dentro do prazo estabelecido acima, será incidido multa moratória de 10% (dez por cento) 
+                sobre o saldo devedor e juros de 1% (um por cento) ao mês, além de atualização monetária, sem prejuízo da faculdade por parte da CONTRATADA, 
+                de considerar a dívida ora assumida antecipadamente vencida e passível do ajuizamento das competentes ações.
+            </p>
+            <p class="paragrafo">
+                Parágrafo Segundo: Caso a proposta de empréstimo seja recusada pela Instituição Financeira, por motivos alheios a vontade da CONTRATADA, 
+                tais como pela incapacidade de pagamento da CONTRATANTE, esta ficará isenta de realizar quaisquer pagamentos a empresa CONTRATADA.
+            </p>
+
+            <p class="clausula-titulo">DAS OBRIGAÇÕES DA CONTRATADA</p>
+            <p class="clausula-titulo">Cláusula 3ª:</p>
+            <p class="paragrafo">
+                A CONTRATADA obriga-se a executar os serviços com esforço, diligência e sempre conforme o melhor critério, obedecendo, inclusive, as técnicas recomendáveis para sua prestação, e observando sempre quaisquer indicações feitas pela CONTRATANTE, bem como se obriga, igualmente, a promover as correções que se fizerem necessárias para o fiel cumprimento do pactuado por este contrato.
+            </p>
+
+            <p class="clausula-titulo">Cláusula 4ª:</p>
+            <p class="paragrafo">
+                A CONTRATADA não se responsabilizará pela variação das taxas e/ou tarifas fixadas na Cédula de Crédito Bancário pela Instituição Financeira, tampouco pelo pagamento de eventuais encargos financeiros.
+            </p>
+
+            <p class="clausula-titulo">DOS DIREITOS E OBRIGAÇÕES DA CONTRATANTE</p>
+            <p class="clausula-titulo">Cláusula 5ª:</p>
+            <p class="paragrafo">
+                A CONTRATANTE terá total liberdade de recusar qualquer proposta oportunizada pela CONTRATADA, não obrigando-se a justificar o motivo da recusa.
+            </p>
+
+            <p class="clausula-titulo">Cláusula 6ª:</p>
+            <p class="paragrafo">
+                A CONTRATANTE declara sua total responsabilidade quanto ao risco do negócio, isentando a CONTRATADA de qualquer responsabilidade sobre a aquisição do crédito que adquirir por seu intermédio.
+            </p>
+
+            <p class="clausula-titulo">Cláusula 7ª:</p>
+            <p class="paragrafo">
+                A CONTRATANTE responderá diretamente por todas as despesas e encargos legalmente exigíveis em decorrência da concessão do crédito, bem como realizará por sua conta os pagamentos e recolhimentos devidos aos órgãos competentes, incluindo impostos e taxas.
+            </p>
+
+            <p class="clausula-titulo">Cláusula 8ª:</p>
+            <p class="paragrafo">
+                Obriga-se a CONTRATANTE em reunir e disponibilizar para a CONTRATADA todos os documentos necessários para análise do crédito, sua origem e status, bem como todos os demais que vierem a ser requisitados pela Instituição Financeira.
+            </p>
+
+            <p class="clausula-titulo">Cláusula 9ª- Do Termo de Confidencialidade:</p>
+            <p class="paragrafo">
+                A CONTRATADA deverá tomar medidas razoáveis para garantir a confiabilidade e segurança dos Dados Pessoais com relação às pessoas que atuem em seu nome, incluindo seus funcionários, agentes, contratados, terceiros, que possam ter acesso aos Dados Pessoais da CONTRATANTE, garantindo que em cada caso o acesso será Limitado àqueles indivíduos que precisam conhecer/acessar os Dados Pessoais da CONTRATANTE, conforme estritamente necessário para os fins do presente contrato,ou para cumprir as Leis Aplicáveis, garantindo que todos esses indivíduos estejam sujeitos a confidencialidade ou obrigações profissionais regulamentares de confidencialidade, em observância à Lei Geral de Proteção de Dados 13.709/2018.
+            </p>
+
+            <p class="clausula-titulo">DAS CONDIÇÕES DA PRESTAÇÃO DOS SERVIÇOS</p>
+            <p class="clausula-titulo">Cláusula 10ª:</p>
+            <p class="paragrafo">
+                A CONTRATADA não poderá ceder ou transferir este contrato, parcial ou totalmente, sem o expresso consentimento por escrito da CONTRATANTE.
+            </p>
+
+            <p class="clausula-titulo">Cláusula 11ª:</p>
+            <p class="paragrafo">
+                A CONTRATADA prestará contas do andamento dos serviços contratados a CONTRATANTE, inclusive informando de imediato toda irregularidade que possa comprometer a perfeição dos serviços.
+            </p>
+
+            <p class="clausula-titulo">DA RESCISÃO E DAS SANÇÕES</p>
+            <p class="clausula-titulo">Cláusula 12ª:</p>
+            <p class="paragrafo">
+                Estabelecem as partes que o presente contrato terá prazo indeterminado de duração, com vigência mínima de 90 (noventa) dias, todavia, o mesmo poderá ser rescindido por qualquer das partes, sem causa justificada, desde que a outra parte seja notificada por escrito, com antecedência mínima de 15 (quinze) dias.
+            </p>
+
+            <p class="clausula-titulo">Cláusula 13ª:</p>
+            <p class="paragrafo">
+                O descumprimento de qualquer uma das obrigações previstas neste contrato colocará a parte inadimplente em mora, autorizando-se à outra parte a promover a rescisão imediata do contrato, independentemente do cumprimento do pré-aviso previsto no caput da cláusula 12ª.
+            </p>
+
+            <p class="clausula-titulo">DAS DISPOSIÇÕES GERAIS</p>
+            <p class="clausula-titulo">Cláusula 14ª: Da Capacidade:</p>
+            <p class="paragrafo">
+                Cada uma das Partes garante à outra Parte que está investida de todos os poderes e autoridade para firmar e cumprir as obrigações aqui previstas e consumar as transações aqui contempladas.
+            </p>
+
+            <p class="clausula-titulo">DAS DISPOSIÇÕES GERAIS</p>
+            <p class="clausula-titulo">Cláusula 15ª:</p>
+            <p class="paragrafo">As partes declaram e concordam, como sendo regras gerais ao cumprimento da avença contida neste instrumento:</p>
+            <p class="paragrafo">a) Este contrato obriga as Partes por si e seus sucessores, constituído título executivo extrajudicial, podendo os valores nele envolvidos ser devidamente cobrados, com os acréscimos especificados, não se admitindo como novação, mas simples liberalidade das partes, qualquer eventual tolerância no descumprimento total ou parcial de seus dispositivos.</p>
+            <p class="paragrafo">b) Este Contrato constitui, até esta data, o inteiro entendimento das Partes, quanto à negociação neste ato efetivada. As Partes concordam que o presente contrato registra fielmente as negociações anteriormente mantidas e as intenções das Partes quanto a elas, substituindo integralmente outros documentos ou memorandos de qualquer espécie anteriormente trocados ou assinados entre as Partes. Para todos os efeitos, somente o presente instrumento governará as relações entre as Partes quanto ao negócio ora contratado.</p>
+            <p class="paragrafo">c) Que sempre guardarão na execução deste instrumento os princípios da probidade e da boa-fé, presentes também, tanto na sua negociação, quanto na sua celebração, não importando, em nenhuma hipótese, em abuso de direito, a qualquer título que seja.</p>
+            <p class="paragrafo">d) O não exercício, total ou parcial, de qualquer direito decorrente deste Contrato, não implicará novação da obrigação ou renúncia ao respectivo direito por seu titular.</p>
+            <p class="paragrafo">e) Qualquer alteração ou aditamento do presente instrumento, somente será válido ou eficaz se efetuado por escrito e firmado pelas Partes, ou herdeiros ou sucessores.</p>
+            <p class="paragrafo">f) Qualquer notificação ou comunicação exigida ou permitida de acordo com o presente Contrato deverá ser feita por escrito e será considerada como entregue e realizada se enviada por telex, fac-símile, mensageiro, e-mail ou correspondência ao endereço constante no preâmbulo deste instrumento, e será considerada como efetivada na data do seu recebimento.</p>
+            <p class="paragrafo">g) que quaisquer alterações contratuais serão sempre dispostas por escrito, por meio de adendo contratual específico, assinado por ambas todos os contratantes.</p>
+            <p class="paragrafo">h) Cliente esta ciente sobre a questão do escritório ficar em posse do app do banco e do sogov no periodo da transação.</p>
+
+            <p class="clausula-titulo">Cláusula 16ª: Do Foro de Eleição:</p>
+            <p class="paragrafo">
+                Fica eleito o foro da Comarca de Brasilia – Estado do Distrito Federal para dirimir as dúvidas e litígios decorrentes deste contrato, renunciando as partes a qualquer outro, por mais privilegiado que seja. E por estarem assim contratados, assinam o presente instrumento em 02(duas) vias de igual teor e forma.
+            </p>
+
+            <p class="paragrafo" style="text-align: right; margin-top: 30px;">
+                <span id="doc-data-extenso" class="variavel">Brasilia, 21 de Outubro de 2025.</span>
+            </p>
+
+            <div class="assinaturas-container">
+                <div class="assinatura-linha">
+                    ______________________________<br>
+                    <strong>CONTRATADA POLLO PROMOTORA</strong>
+                </div>
+                
+                <div class="assinatura-linha">
+                    <span id="doc-nome-assinatura" class="variavel">[NOME DO CLIENTE]</span><br>
+                    CONTRATANTE<br>
+                    CPF: <span id="doc-cpf-assinatura" class="variavel">[CPF]</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+        let ultimoPDFData = null;
+
+        // --- FUNÇÕES AUXILIARES ---
+        const formatarMoeda = (val) => {
+            let v = typeof val === 'string' ? parseFloat(val.replace('R$','').replace(/\./g,'').replace(',','.').trim()) : val;
+            if(isNaN(v)) v = 0;
+            return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        };
+        const parseMoeda = (str) => parseFloat(str.replace('R$','').replace(/\./g,'').replace(',','.').trim()) || 0;
+        
+        const showToast = (msg, type='success') => {
+            const t = document.createElement('div');
+            t.className = `toast bg-${type} show`; t.innerText = msg;
+            document.getElementById('toast-container').appendChild(t);
+            setTimeout(()=>t.remove(), 4000);
+        };
+        const showLoading = (s) => document.getElementById('loading-overlay').style.display = s ? 'flex' : 'none';
+
+        // --- PREVIEW ---
+        function atualizarPreview() {
+            const mapa = {
+                'nome': ['doc-nome', 'doc-nome-assinatura'],
+                'cpf': ['doc-cpf', 'doc-cpf-assinatura'],
+                'rg': ['doc-rg'],
+                'endereco': ['doc-endereco'],
+                'banco-origem': ['doc-banco-origem'],
+                'valor-parcela': ['doc-parcela'],
+                'valor-bruto': ['doc-bruto'],
+                'valor-liquido': ['doc-liquido'],
+                'valor-consultoria': ['doc-consultoria'],
+                'prazo': ['doc-prazo'],
+                'data-contrato': ['doc-data-extenso']
+            };
+            for (let id in mapa) {
+                const elInput = document.getElementById(id);
+                if(!elInput) continue;
+                mapa[id].forEach(docId => {
+                    const elDoc = document.getElementById(docId);
+                    if(elDoc) elDoc.innerText = elInput.value || (id === 'banco-origem' ? 'BRADESCO' : (id === 'prazo' ? '96' : '________________'));
+                });
+            }
+        }
+
+        // --- LÓGICA DE CÁLCULO (VARIÁVEL) ---
+        function calcularValores() {
+            const bruto = parseMoeda(document.getElementById('valor-bruto').value);
+            const percentual = parseFloat(document.getElementById('percentual-honorarios').value) || 0;
+            
+            // Atualiza o texto da porcentagem
+            const txtPerc = document.getElementById('doc-percentual-texto');
+            if(txtPerc) txtPerc.innerText = percentual;
+            
+            const txtPercTab = document.getElementById('doc-percentual-tab');
+            if(txtPercTab) txtPercTab.innerText = percentual;
+
+            // Tenta escrever por extenso (básico)
+            const txtExtenso = document.getElementById('doc-percentual-extenso');
+            if(txtExtenso) {
+                const mapaExt = {10:'dez',15:'quinze',20:'vinte',25:'vinte e cinco',30:'trinta',35:'trinta e cinco',40:'quarenta',50:'cinquenta'};
+                txtExtenso.innerText = mapaExt[percentual] || percentual;
+            }
+
+            if (bruto > 0) {
+                const consultoria = bruto * (percentual / 100);
+                document.getElementById('valor-consultoria').value = formatarMoeda(consultoria);
+            }
+            atualizarPreview();
+        }
+
+        // --- CÉREBROS DE LEITURA DE PDF ---
+        async function processarPdfSiape(text) {
+            let cliente = { nome: '', cpf: '', orgao: '' };
+            let loans = [];
+            const infoRegex = /CPF\nMatrícula\nNome\n(?:[^\n]+\n)([^\n]+)\n(?:[^\n]+\n)([^\n]+)/;
+            const matchInfo = text.match(infoRegex);
+            if(matchInfo) { cliente.cpf = matchInfo[1].trim(); cliente.nome = matchInfo[2].trim(); }
+
+            const rgxContratos = /"([\d-]+[\/\d]*)"\s*,\s*"(\d+-EMPREST[^"]+)"\s*,\s*"\d+"\s*,\s*"\d+"\s*,\s*"[^"]+"\s*,\s*"(\d+\/\d+)"\s*,\s*"(R\$\s*[\d.,]+)"/g;
+            let matches = [...text.matchAll(rgxContratos)];
+            if(matches.length === 0) {
+                const rgxAntigo = /(EMPREST[^\n]+)\n(?:.|\n)*?(R\$\s*[\d\.,]+)\n(\d{2,3}\/\d{2,3})/g;
+                matches = [...text.matchAll(rgxAntigo)].map(m => [null, 'N/A', m[1], m[3], m[2]]);
+            }
+            matches.forEach(m => {
+                const banco = m[2].replace(/^\d+-EMPREST\s*/, '').replace('BCO PRIVADOS - ', '').trim();
+                const parcela = parseMoeda(m[4]);
+                const [pagas, total] = m[3].split('/');
+                if(parcela > 0) loans.push({ banco, parcela, prazo: total, pagas: pagas, fullPrazo: m[3] });
+            });
+            return { cliente, loans };
+        }
+
+        async function processarPdfExercicio(text) {
+            let cliente = { nome: '', cpf: '' };
+            let loans = [];
+            const infoMatch = text.match(/(\d{9,12})\s*-\s*([\d.-]+)\s*-\s*([A-ZÀ-Ú ]+)/);
+            if(infoMatch) { cliente.cpf = infoMatch[2]; cliente.nome = infoMatch[3]; }
+
+            const blocos = text.split(/\n(?=\d{3}\s*-\s*)/);
+            blocos.forEach(bloco => {
+                if(bloco.toUpperCase().includes('EMPRÉSTIMO') && /Em\s+Andamento/.test(bloco)) {
+                    const bancoMatch = bloco.match(/^([\s\S]+?)\n(\d{7})\n/);
+                    const valorMatch = bloco.match(/R\$\s*[\d.,]+/);
+                    const prazoMatch = /([\w\.]+)\s*\n\s*(\d+)\s+Em\s+Andamento/;
+                    const prazoRes = bloco.match(prazoMatch);
+                    if(bancoMatch && valorMatch && prazoRes) {
+                         loans.push({ banco: bancoMatch[1].replace(/\n/g, ' ').trim(), parcela: parseMoeda(valorMatch[0]), prazo: prazoRes[1], fullPrazo: `${prazoRes[2]} de ${prazoRes[1]}` });
+                    }
+                }
+            });
+            return { cliente, loans };
+        }
+
+        async function processarPdfSGP(text) {
+            let cliente = { nome: '', cpf: '' };
+            let loans = [];
+            const nomeMatch = text.match(/Nome\s+([A-ZÀ-Ú ]+)/i); if(nomeMatch) cliente.nome = nomeMatch[1];
+            const cpfMatch = text.match(/CPF\s+(\d{11}|\d{3}\.\d{3}\.\d{3}-\d{2})/i); if(cpfMatch) cliente.cpf = cpfMatch[1];
+
+            const descontosRegex = /(?:(\d{3})\s*\n\s*)?([\d.,]+)\s*\n\s*((?:EMPREST|AMORT|CONSIG)[^\n]+)/g;
+            let matches = [...text.matchAll(descontosRegex)];
+            matches.forEach(m => {
+                const valor = parseMoeda(m[2]);
+                const banco = m[3].trim();
+                const prazo = m[1] || 'N/A';
+                if(valor > 10) loans.push({ banco, parcela: valor, prazo: prazo, fullPrazo: prazo });
+            });
+            return { cliente, loans };
+        }
+
+        // --- PROCESSADOR MESTRE ---
+        async function parsearPdf(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            showLoading(true);
+            const reader = new FileReader();
+            reader.onload = async function() {
+                try {
+                    const typedarray = new Uint8Array(this.result);
+                    const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const tc = await page.getTextContent();
+                        fullText += tc.items.map(s => s.str).join('\n') + '\n';
+                    }
+                    // OCR Fallback
+                    if(fullText.length < 50) {
+                         const worker = await Tesseract.createWorker('por');
+                         const page = await pdf.getPage(1);
+                         const viewport = page.getViewport({ scale: 2 });
+                         const canvas = document.createElement('canvas');
+                         const ctx = canvas.getContext('2d');
+                         canvas.width = viewport.width; canvas.height = viewport.height;
+                         await page.render({ canvasContext: ctx, viewport }).promise;
+                         const { data } = await worker.recognize(canvas);
+                         fullText = data.text;
+                         await worker.terminate();
+                    }
+                    let result = { cliente: {}, loans: [] };
+                    if(fullText.includes("SIAPE") || fullText.includes("Rubrica")) result = await processarPdfSiape(fullText);
+                    else if(fullText.includes("Exército") || fullText.includes("FIM DA PÁGINA")) result = await processarPdfExercicio(fullText);
+                    else result = await processarPdfSGP(fullText);
+
+                    ultimoPDFData = result;
+                    if(result.cliente.nome) document.getElementById('nome').value = result.cliente.nome;
+                    if(result.cliente.cpf) document.getElementById('cpf').value = result.cliente.cpf;
+                    showContractModal(result.loans, result.cliente);
+                    atualizarPreview();
+                    showToast("PDF Processado!");
+                } catch (e) { console.error(e); showToast("Erro ao ler PDF", "danger"); } finally { showLoading(false); event.target.value = ''; }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // --- MODAL LOGIC (ATUALIZADO PARA NÃO SOBRESCREVER O BANCO) ---
+        function showContractModal(loans, cliente) {
+            const list = document.getElementById('contract-list');
+            list.innerHTML = '';
+            document.getElementById('infoClienteModal').innerText = `Cliente: ${cliente.nome || 'Desconhecido'} | CPF: ${cliente.cpf || '...'}`;
+            if(loans.length === 0) list.innerHTML = '<p>Nenhum empréstimo detectado automaticamente.</p>';
+            else {
+                loans.forEach((l, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'form-check';
+                    div.innerHTML = `<input type="checkbox" id="loan-${idx}" data-idx="${idx}"> <label for="loan-${idx}"><strong>${l.banco}</strong><br>Parcela: ${formatarMoeda(l.parcela)} | Prazo: ${l.fullPrazo || l.prazo}</label>`;
+                    list.appendChild(div);
+                });
+            }
+            document.getElementById('contract-modal-overlay').style.display = 'flex';
+        }
+        document.getElementById('modal-cancel-btn').onclick = () => document.getElementById('contract-modal-overlay').style.display = 'none';
+        
+        // AQUI ESTÁ A MUDANÇA PRINCIPAL:
+        document.getElementById('modal-apply-btn').onclick = () => {
+            const checks = document.querySelectorAll('#contract-list input:checked');
+            if(checks.length > 0) {
+                let somaParcela = 0; 
+                // Ignoramos bancoStr e prazoStr do PDF para o preenchimento do contrato, pois é fixo.
+                
+                checks.forEach(c => {
+                    const loan = ultimoPDFData.loans[c.getAttribute('data-idx')];
+                    somaParcela += loan.parcela;
+                });
+
+                // Preenche APENAS a parcela somada
+                document.getElementById('valor-parcela').value = formatarMoeda(somaParcela);
+                
+                // NÃO atualiza banco-origem nem prazo (ficam fixos no HTML)
+                
+                showToast("Parcelas somadas e aplicadas!");
+            }
+            atualizarPreview();
+            document.getElementById('contract-modal-overlay').style.display = 'none';
+        };
+
+        // --- CEP e INICIALIZAÇÃO ---
+        async function buscarCep() {
+            const cep = document.getElementById('cep').value.replace(/\D/g,'');
+            if(cep.length===8){
+                const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+                const d = await r.json();
+                if(!d.erro) { document.getElementById('endereco').value = `${d.logradouro}, ${d.bairro}, ${d.localidade}/${d.uf}, CEP: ${d.cep}`; atualizarPreview(); }
+            }
+        }
+        
+        document.getElementById('pdf-upload').addEventListener('change', parsearPdf);
+        document.querySelectorAll('input').forEach(i => {
+            i.addEventListener('input', () => { if(i.id==='percentual-honorarios') calcularValores(); atualizarPreview(); });
+            if(i.classList.contains('campo-moeda')) { i.addEventListener('blur', function(){ this.value = formatarMoeda(this.value); if(this.id==='valor-bruto') calcularValores(); atualizarPreview(); }); }
+        });
+        document.getElementById('gerar-pdf').addEventListener('click', () => {
+            const el = document.getElementById('documento-completo');
+            const nome = document.getElementById('nome').value || 'Contrato';
+            el.classList.add('generating-pdf');
+            html2pdf().set({ margin: 10, filename: `${nome}_Pollo.pdf`, html2canvas: {scale:2}, jsPDF: {unit:'mm', format:'a4'} }).from(el).save().then(()=>el.classList.remove('generating-pdf'));
+        });
+
+        const d = new Date();
+        const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+        document.getElementById('data-contrato').value = `Brasília, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}.`;
+        atualizarPreview();
+    </script>
+</body>
+</html>
