@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contrato Prestação de Serviços - POLLO (Fixo Bradesco 96x)</title>
+    <title>Contrato POLLO (Margens de Segurança)</title>
 
     <script>
         if (localStorage.getItem('isAuthenticated') !== 'true') {
@@ -17,59 +17,141 @@
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@latest/dist/tesseract.min.js'></script>
 
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; display: flex; gap: 20px; padding: 20px; justify-content: center; flex-wrap: wrap; }
+        /* Reset */
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #525659; display: flex; gap: 20px; padding: 20px; justify-content: center; flex-wrap: wrap; }
         
-        /* --- FORMULÁRIO (Lado Esquerdo) --- */
-        #form-container { flex: 0 0 420px; background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); height: fit-content; max-height: 95vh; overflow-y: auto; position: sticky; top: 20px; }
+        /* --- FORMULÁRIO --- */
+        #form-container { 
+            flex: 0 0 400px; 
+            background: white; 
+            padding: 25px; 
+            border-radius: 4px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); 
+            height: fit-content; 
+            max-height: 95vh; 
+            overflow-y: auto; 
+            position: sticky; 
+            top: 20px; 
+        }
         #form-container h1 { text-align: center; color: #0d47a1; margin-top: 0; font-size: 1.4rem; border-bottom: 2px solid #0d47a1; padding-bottom: 10px; }
         .form-section { margin-bottom: 20px; border-bottom: 1px dashed #ccc; padding-bottom: 15px; }
         .form-group { margin-bottom: 10px; }
         .form-group label { display: block; font-weight: 600; font-size: 0.85rem; color: #555; margin-bottom: 4px; }
         .form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; font-size: 0.9rem; }
         .form-group input:focus { border-color: #0d47a1; outline: none; }
-        
-        /* Estilo para campos Readonly parecerem "travados" visualmente */
         .form-group input[readonly] { background-color: #e9ecef; color: #495057; cursor: not-allowed; }
-
         .grid-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; align-items: end; }
-
         #gerar-pdf { width: 100%; padding: 12px; background: #0d47a1; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 1rem; transition: background 0.3s; }
         #gerar-pdf:hover { background: #083275; }
-
         .upload-area { border: 2px dashed #0d47a1; padding: 15px; text-align: center; cursor: pointer; background: #eef4ff; border-radius: 6px; color: #0d47a1; font-weight: bold; display: block; transition: background 0.2s; }
         .upload-area:hover { background: #dce9ff; }
         #pdf-upload { display: none; }
 
-        /* --- PREVIEW DO DOCUMENTO (Lado Direito) --- */
-        #preview-container { flex: 1; display: flex; justify-content: center; min-width: 500px; }
+        /* --- PREVIEW DO DOCUMENTO --- */
+        #preview-container { 
+            flex: 1; 
+            display: flex; 
+            justify-content: center; 
+            min-width: 500px; 
+            background-color: #525659; 
+            padding-bottom: 50px;
+        }
+        
         #documento-completo { 
+            /* Visualização na tela (Simula papel A4) */
             width: 210mm; 
-            padding: 20mm 20mm; 
+            min-height: 297mm;
+            padding: 25mm 25mm; /* Margem visual na tela */
             background: white; 
-            box-shadow: 0 0 15px rgba(0,0,0,0.1); 
+            box-shadow: 0 0 15px rgba(0,0,0,0.5); 
+            
             font-family: 'Times New Roman', Times, serif; 
-            font-size: 11pt; 
-            line-height: 1.15; 
+            color: #000;
+            line-height: 1.3; 
             text-align: justify; 
-            color: black; 
         }
 
-        #documento-completo h3 { text-align: center; text-transform: uppercase; font-size: 12pt; margin-bottom: 20px; font-weight: bold; }
-        .clausula-titulo { font-weight: bold; margin-top: 15px; margin-bottom: 5px; text-transform: uppercase; display: block; }
-        .paragrafo { margin-bottom: 10px; text-indent: 0; }
-        .paragrafo-recuo { text-indent: 1cm; }
+        /* --- CLASSE MÁGICA PARA GERAR PDF SEM CORTES --- */
+        #documento-completo.generating-pdf {
+            /* Matemática do A4: 210mm largura total.
+               Margens do PDF definidas no JS: 20mm esq + 20mm dir = 40mm.
+               Espaço disponível: 170mm.
+               Definimos width: 160mm para ter 10mm de sobra (5mm cada lado) e evitar corte.
+            */
+            width: 160mm !important; 
+            max-width: 160mm !important;
+            padding: 0 !important; /* Remove padding visual */
+            margin: 0 auto !important; /* Centraliza */
+            box-shadow: none !important;
+        }
 
-        .resumo-valores { margin: 15px 0; padding: 5px 0; font-weight: bold; }
-        .resumo-linha { display: block; margin-bottom: 3px; }
+        /* Unificação de Fontes */
+        #documento-completo * {
+            font-size: 12pt !important; 
+            font-family: 'Times New Roman', Times, serif !important;
+        }
 
-        .assinaturas-container { margin-top: 40px; display: flex; flex-direction: column; align-items: center; gap: 30px; page-break-inside: avoid; }
-        .assinatura-linha { width: 70%; border-top: 1px solid #000; text-align: center; padding-top: 5px; margin-top: 30px; }
+        /* Regras de Quebra de Página */
+        p, .paragrafo, .clausula-titulo, .resumo-valores, h3, .assinatura-linha {
+            page-break-inside: avoid !important;
+        }
+
+        #documento-completo h3 { 
+            text-align: center; 
+            text-transform: uppercase; 
+            font-weight: 900 !important; 
+            margin-bottom: 25px; 
+            margin-top: 0; 
+        }
+
+        .clausula-titulo { 
+            font-weight: 900 !important; 
+            margin-top: 20px; 
+            margin-bottom: 10px; 
+            text-transform: uppercase;
+            display: block; 
+        }
+        
+        .paragrafo { 
+            margin-bottom: 12px; 
+            text-indent: 0; 
+            display: block; 
+            width: 100%;
+        }
+
+        .resumo-valores { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border: 1px solid #000; 
+            font-weight: bold; 
+            page-break-inside: avoid;
+        }
+        
+        .resumo-linha { display: block; margin-bottom: 5px; }
+
+        .assinaturas-container { 
+            margin-top: 50px; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 40px; 
+            page-break-inside: avoid; 
+        }
+        
+        .assinatura-linha { 
+            width: 90%; 
+            border-top: 1px solid #000; 
+            text-align: center; 
+            padding-top: 5px; 
+            margin-top: 20px; 
+            page-break-inside: avoid;
+        }
 
         .variavel { background-color: #eef; padding: 0 2px; border-radius: 2px; font-weight: bold; color: #000; }
         .generating-pdf .variavel { background-color: transparent; padding: 0; font-weight: inherit; }
-        .destaque-valor { font-weight: bold; }
 
-        /* --- MODAL, TOAST e LOADING --- */
+        /* --- UTILITÁRIOS --- */
         #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 2000; display: none; flex-direction: column; justify-content: center; align-items: center; }
         .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #0d47a1; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -90,19 +172,11 @@
         .toast.show { display: block; animation: slideIn 0.3s; }
         .toast.bg-success { background: #28a745; }
         .toast.bg-danger { background: #dc3545; }
-        
-        @media print {
-            body { background: white; }
-            #form-container, #loading-overlay, #contract-modal-overlay, .toast-container { display: none; }
-            #preview-container { display: block; margin: 0; padding: 0; }
-            #documento-completo { box-shadow: none; width: 100%; margin: 0; padding: 0; }
-        }
     </style>
 </head>
 
 <body>
     <div class="toast-container" id="toast-container"></div>
-    
     <div id="loading-overlay">
         <div class="spinner"></div>
         <strong style="margin-top: 10px; color: #0d47a1;">Analisando Documento...</strong>
@@ -110,33 +184,32 @@
 
     <div id="contract-modal-overlay">
         <div id="contract-modal">
-            <div id="contract-modal-header">Selecione as Parcelas para Somar</div>
+            <div id="contract-modal-header">Somar Parcelas</div>
             <div id="contract-modal-body">
                 <div id="infoClienteModal" style="background: #eef; padding: 10px; margin-bottom: 10px; font-size: 0.9rem; border-radius: 4px;"></div>
-                <p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">Selecione os contratos abaixo para somar o valor da parcela. O Banco e Prazo no contrato final permanecerão BRADESCO / 96x.</p>
+                <p style="font-size: 0.85rem; color: #666; margin-bottom: 10px;">Selecione as parcelas. O contrato final será <strong>BRADESCO 96x</strong>.</p>
                 <div id="contract-list"></div>
             </div>
             <div id="contract-modal-footer">
                 <button id="modal-cancel-btn" class="modal-btn btn-secondary">Cancelar</button>
-                <button id="modal-apply-btn" class="modal-btn btn-primary">Somar Selecionados</button>
+                <button id="modal-apply-btn" class="modal-btn btn-primary">Somar</button>
             </div>
         </div>
     </div>
 
     <div id="form-container">
         <h1>Contrato POLLO</h1>
-        
         <div class="form-section">
             <input type="file" id="pdf-upload" accept=".pdf">
-            <label for="pdf-upload" class="upload-area">📂 Arraste o Contracheque/Extrato aqui</label>
+            <label for="pdf-upload" class="upload-area">📂 Arraste o Contracheque</label>
         </div>
 
         <div class="form-section">
             <h2>Dados do Contratante</h2>
             <div class="form-group"><label>Nome:</label><input type="text" id="nome" placeholder="Nome Completo"></div>
             <div class="form-group"><label>CPF:</label><input type="text" id="cpf" placeholder="000.000.000-00"></div>
-            <div class="form-group"><label>RG (Opcional):</label><input type="text" id="rg" placeholder="000000 SSP/DF"></div>
-            <div class="form-group"><label>CEP:</label><input type="text" id="cep" onblur="buscarCep()" placeholder="Digite o CEP para puxar o Endereço Completo"></div>
+            <div class="form-group"><label>RG:</label><input type="text" id="rg" placeholder="000000 SSP/DF"></div>
+            <div class="form-group"><label>CEP:</label><input type="text" id="cep" onblur="buscarCep()" placeholder="00000-000"></div>
             <div class="form-group"><label>Endereço:</label><input type="text" id="endereco" placeholder="Endereço completo"></div>
         </div>
 
@@ -212,7 +285,7 @@
             <p class="clausula-titulo">Cláusula 2ª – Dos valores liberados</p>
             <p class="paragrafo">
                 Pela prestação de serviços objeto do presente contrato a CONTRATANTE pagará à CONTRATADA o total de 
-                <strong><span id="doc-percentual-texto">30</span>% (<span id="doc-percentual-extenso">trinta</span> por cento</strong> sobre o valor do crédito aprovado pela Instituição Financeira e depositado na conta corrente do CONTRATANTE) 
+                <strong><span id="doc-percentual-texto">30</span>% (<span id="doc-percentual-extenso">trinta</span> por cento)</strong> sobre o valor do crédito aprovado pela Instituição Financeira e depositado na conta corrente do CONTRATANTE) 
                 mediante transferência bancária junto a conta corrente de titularidade da CONTRATADA Banco: CAIXA ECONÔMICA FEDERAL (104) Agencia: 0643 conta corrente :596052731-2 
                 cujo pagamento deverá ser realizado na data da liberação do referido crédito pela Instituição Financeira à CONTRATANTE.
             </p>
@@ -383,19 +456,17 @@
             }
         }
 
-        // --- LÓGICA DE CÁLCULO (VARIÁVEL) ---
+        // --- LÓGICA DE CÁLCULO ---
         function calcularValores() {
             const bruto = parseMoeda(document.getElementById('valor-bruto').value);
             const percentual = parseFloat(document.getElementById('percentual-honorarios').value) || 0;
             
-            // Atualiza o texto da porcentagem
             const txtPerc = document.getElementById('doc-percentual-texto');
             if(txtPerc) txtPerc.innerText = percentual;
             
             const txtPercTab = document.getElementById('doc-percentual-tab');
             if(txtPercTab) txtPercTab.innerText = percentual;
 
-            // Tenta escrever por extenso (básico)
             const txtExtenso = document.getElementById('doc-percentual-extenso');
             if(txtExtenso) {
                 const mapaExt = {10:'dez',15:'quinze',20:'vinte',25:'vinte e cinco',30:'trinta',35:'trinta e cinco',40:'quarenta',50:'cinquenta'};
@@ -409,7 +480,7 @@
             atualizarPreview();
         }
 
-        // --- CÉREBROS DE LEITURA DE PDF ---
+        // --- CÉREBROS DE LEITURA ---
         async function processarPdfSiape(text) {
             let cliente = { nome: '', cpf: '', orgao: '' };
             let loans = [];
@@ -470,7 +541,6 @@
             return { cliente, loans };
         }
 
-        // --- PROCESSADOR MESTRE ---
         async function parsearPdf(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -486,7 +556,6 @@
                         const tc = await page.getTextContent();
                         fullText += tc.items.map(s => s.str).join('\n') + '\n';
                     }
-                    // OCR Fallback
                     if(fullText.length < 50) {
                          const worker = await Tesseract.createWorker('por');
                          const page = await pdf.getPage(1);
@@ -515,7 +584,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // --- MODAL LOGIC (ATUALIZADO PARA NÃO SOBRESCREVER O BANCO) ---
+        // --- MODAL ---
         function showContractModal(loans, cliente) {
             const list = document.getElementById('contract-list');
             list.innerHTML = '';
@@ -533,30 +602,22 @@
         }
         document.getElementById('modal-cancel-btn').onclick = () => document.getElementById('contract-modal-overlay').style.display = 'none';
         
-        // AQUI ESTÁ A MUDANÇA PRINCIPAL:
         document.getElementById('modal-apply-btn').onclick = () => {
             const checks = document.querySelectorAll('#contract-list input:checked');
             if(checks.length > 0) {
                 let somaParcela = 0; 
-                // Ignoramos bancoStr e prazoStr do PDF para o preenchimento do contrato, pois é fixo.
-                
                 checks.forEach(c => {
                     const loan = ultimoPDFData.loans[c.getAttribute('data-idx')];
                     somaParcela += loan.parcela;
                 });
-
-                // Preenche APENAS a parcela somada
                 document.getElementById('valor-parcela').value = formatarMoeda(somaParcela);
-                
-                // NÃO atualiza banco-origem nem prazo (ficam fixos no HTML)
-                
                 showToast("Parcelas somadas e aplicadas!");
             }
             atualizarPreview();
             document.getElementById('contract-modal-overlay').style.display = 'none';
         };
 
-        // --- CEP e INICIALIZAÇÃO ---
+        // --- CEP ---
         async function buscarCep() {
             const cep = document.getElementById('cep').value.replace(/\D/g,'');
             if(cep.length===8){
@@ -571,11 +632,32 @@
             i.addEventListener('input', () => { if(i.id==='percentual-honorarios') calcularValores(); atualizarPreview(); });
             if(i.classList.contains('campo-moeda')) { i.addEventListener('blur', function(){ this.value = formatarMoeda(this.value); if(this.id==='valor-bruto') calcularValores(); atualizarPreview(); }); }
         });
+        
+        // --- GERAÇÃO PDF (CONFIGURAÇÃO FINAL) ---
         document.getElementById('gerar-pdf').addEventListener('click', () => {
             const el = document.getElementById('documento-completo');
             const nome = document.getElementById('nome').value || 'Contrato';
+            
             el.classList.add('generating-pdf');
-            html2pdf().set({ margin: 10, filename: `${nome}_Pollo.pdf`, html2canvas: {scale:2}, jsPDF: {unit:'mm', format:'a4'} }).from(el).save().then(()=>el.classList.remove('generating-pdf'));
+
+            const opt = {
+                // Margens de segurança: Top/Bot=20mm, Left/Right=20mm
+                margin:       20, 
+                filename:     `${nome}_Pollo.pdf`,
+                image:        { type: 'jpeg', quality: 0.92 }, // Otimização de tamanho/qualidade
+                html2canvas:  { 
+                    scale: 1.6, // Escala balanceada para nitidez sem arquivo gigante
+                    scrollY: 0, 
+                    useCORS: true,
+                    letterRendering: true
+                },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak:    { mode: ['css', 'legacy'] }
+            };
+
+            html2pdf().set(opt).from(el).save().then(() => {
+                el.classList.remove('generating-pdf');
+            });
         });
 
         const d = new Date();
