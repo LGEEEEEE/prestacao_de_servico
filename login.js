@@ -23,7 +23,7 @@ document.getElementById('loginForm').addEventListener('submit', async function (
     ];
     
     // A senha está correta (o hash para "123456")
-    const senhaHashCorreta = "7ed2155a71ea0cb812cf5706d75621a37a24480e8fa48ebefa7293034cffdde1";
+    const senhaHashCorreta = "ab386d81ec1c55c539bb1afddb409a4f3ce159ecb9170debacad67c0484b7364";
 
     // Gera o hash da senha inserida pelo usuário
     const senhaHashDigitada = await hashPassword(password);
