@@ -618,12 +618,41 @@
         };
 
         // --- CEP ---
+        // --- CEP ---
         async function buscarCep() {
-            const cep = document.getElementById('cep').value.replace(/\D/g,'');
-            if(cep.length===8){
-                const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-                const d = await r.json();
-                if(!d.erro) { document.getElementById('endereco').value = `${d.logradouro}, ${d.bairro}, ${d.localidade}/${d.uf}, CEP: ${d.cep}`; atualizarPreview(); }
+            const inputCep = document.getElementById('cep');
+            const inputEndereco = document.getElementById('endereco');
+            
+            // Remove qualquer caractere que não seja número (ex: hífens)
+            const cepDigitado = inputCep.value.replace(/\D/g, '');
+
+            if (cepDigitado.length === 8) {
+                // Feedback visual enquanto a API carrega
+                inputEndereco.value = "Buscando endereço...";
+                
+                try {
+                    const resposta = await fetch(`https://viacep.com.br/ws/${cepDigitado}/json/`);
+                    const dados = await resposta.json();
+
+                    if (!dados.erro) {
+                        // Preenche o campo de endereço e atualiza o PDF
+                        inputEndereco.value = `${dados.logradouro}, Bairro ${dados.bairro}, ${dados.localidade} - ${dados.uf}`;
+                        atualizarPreview();
+                        showToast("Endereço preenchido automaticamente!");
+                    } else {
+                        // Caso o CEP seja de formato válido, mas não exista
+                        inputEndereco.value = "";
+                        showToast("CEP não encontrado na base de dados.", "danger");
+                    }
+                } catch (erro) {
+                    console.error("Erro na requisição do ViaCEP:", erro);
+                    inputEndereco.value = "";
+                    showToast("Erro ao conectar com o servidor de CEP.", "danger");
+                }
+            } else if (cepDigitado.length > 0) {
+                // Caso o usuário digite menos ou mais que 8 números
+                showToast("CEP inválido. O CEP deve conter 8 números.", "danger");
+                inputEndereco.value = "";
             }
         }
         
